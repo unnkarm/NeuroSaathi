@@ -253,7 +253,7 @@ export function Sidebar({ role, page, setPage, setView, onLogout, isMobile = fal
   const uNav = [
     { id: "dashboard",   label: "Overview",    icon: "◆" },
     { id: "assessments", label: "Assessments", icon: "◉" },
-    { id: "games",       label: "Games",       icon: "G" },
+    { id: "games",       label: "Playground",  icon: "G" },
     { id: "results",     label: "Results",     icon: "◆" },
     { id: "progress",    label: "Progress",    icon: "↗" },
     { id: "messages",    label: "Messages",    icon: "✉", badge: unread },
@@ -325,7 +325,7 @@ export function Sidebar({ role, page, setPage, setView, onLogout, isMobile = fal
         </div>
       </div>
 
-      <nav style={{ flex:1, padding:"14px 10px", display:"flex", flexDirection:"column", gap:2, position:"relative", zIndex:2 }}>
+      <nav style={{ flex:1, padding:"14px 10px", display:"flex", flexDirection:"column", gap:2, position:"relative", zIndex:2, overflowY:"auto", overflowX:"hidden", scrollbarWidth:"thin", scrollbarColor:"rgba(255,255,255,0.12) transparent" }}>
         {nav.map(item => {
           const isAssessmentsParent = role !== "doctor" && item.id === "assessments";
           const isGamesParent = role !== "doctor" && item.id === "games";
@@ -634,5 +634,4 @@ export function Shell({ role, page, setPage, setView, children, onLogout }) {
     </div>
   );
 }
-
 
