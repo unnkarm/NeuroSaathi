@@ -258,6 +258,8 @@ export function Sidebar({ role, page, setPage, setView, onLogout, isMobile = fal
     { id: "progress",    label: "Progress",    icon: "↗" },
     { id: "messages",    label: "Messages",    icon: "✉", badge: unread },
     { id: "doctors",     label: "My Doctor",   icon: "🩺", accent: true },
+    { id: "book-appointment", label: "Book Appointment", icon: "📅" },
+    { id: "my-appointments",  label: "My Appointments",  icon: "🗓" },
   ];
 
   const userAssessmentTests = [
@@ -272,6 +274,7 @@ export function Sidebar({ role, page, setPage, setView, onLogout, isMobile = fal
     { id: "doctor-dashboard", label: "Dashboard", icon: "D" },
     { id: "patients",         label: "Patients",  icon: "P" },
     { id: "messages",         label: "Messages",  icon: "M", badge: unread },
+    { id: "doctor-appointments", label: "Appointments", icon: "📅" },
     { id: "content",          label: "Content",   icon: "C" },
   ];
 
@@ -544,8 +547,11 @@ export function Shell({ role, page, setPage, setView, children, onLogout }) {
     progress:         "PROGRESS",
     community:        "COMMUNITY",
     doctors:          "MY DOCTOR",
+    "book-appointment":"BOOKING",
+    "my-appointments":"APPOINTMENTS",
     "doctor-dashboard":"DOCTOR",
     patients:         "PATIENTS",
+    "doctor-appointments":"CONSULTS",
   };
   const ghost = ghostLabels[page] || (GAMES.some(g => g.id === page) ? "GAMES" : "NEURO");
 
@@ -628,6 +634,5 @@ export function Shell({ role, page, setPage, setView, children, onLogout }) {
     </div>
   );
 }
-
 
 

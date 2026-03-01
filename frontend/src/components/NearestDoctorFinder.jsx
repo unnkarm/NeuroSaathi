@@ -13,6 +13,50 @@ const RED  = "#e84040";
 const GRN  = "#34d399";
 
 // ── Robust JSON extractor ───────────────────────────────────────────────────
+function sanitizeJSONString(input) {
+  if (!input) return "";
+  let text = input
+    .replace(/[“”]/g, "\"")
+    .replace(/[‘’]/g, "'")
+    .replace(/\u00A0/g, " ");
+
+  // Convert raw newlines/tabs inside quoted strings to escaped sequences.
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === "\"" && !escaped) {
+      inString = !inString;
+      out += ch;
+      escaped = false;
+      continue;
+    }
+    if (inString && (ch === "\n" || ch === "\r")) {
+      out += "\\n";
+      escaped = false;
+      continue;
+    }
+    if (inString && ch === "\t") {
+      out += "\\t";
+      escaped = false;
+      continue;
+    }
+    out += ch;
+    escaped = ch === "\\" && !escaped;
+    if (ch !== "\\") escaped = false;
+  }
+
+  // Common JSON-ish repairs.
+  out = out
+    .replace(/,\s*}/g, "}")
+    .replace(/,\s*]/g, "]")
+    .replace(/([{,]\s*)'([^']+?)'\s*:/g, '$1"$2":')
+    .replace(/:\s*'([^']*?)'(\s*[,}\]])/g, (_m, v, tail) => `:"${v.replace(/"/g, '\\"')}"${tail}`);
+
+  return out.trim();
+}
+
 function extractJSON(text) {
   if (!text) return null;
 
@@ -31,7 +75,7 @@ function extractJSON(text) {
 
   // Step 4: fix trailing commas then parse
   try {
-    const fixed = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
+    const fixed = sanitizeJSONString(cleaned);
     const f2 = fixed.indexOf("{");
     const l2 = fixed.lastIndexOf("}");
     if (f2 !== -1 && l2 > f2) return JSON.parse(fixed.slice(f2, l2 + 1));
@@ -44,7 +88,74 @@ function extractJSON(text) {
     try { return JSON.parse(text.slice(f3, l3 + 1)); } catch (_) {}
   }
 
+  // Step 6: aggressive sanitation + JS object fallback
+  try {
+    const candidate = sanitizeJSONString(cleaned);
+    const f4 = candidate.indexOf("{");
+    const l4 = candidate.lastIndexOf("}");
+    if (f4 !== -1 && l4 > f4) {
+      const objLike = candidate.slice(f4, l4 + 1);
+      try { return JSON.parse(objLike); } catch (_) {}
+      try {
+        // Last-resort parser for JSON-like output (single quotes, minor syntax drift)
+        const parsed = Function(`"use strict"; return (${objLike});`)();
+        if (parsed && typeof parsed === "object") return parsed;
+      } catch (_) {}
+    }
+  } catch (_) {}
+
   return null;
+}
+
+function tryParseObjectFragment(fragment) {
+  if (!fragment) return null;
+  const cleaned = sanitizeJSONString(fragment);
+  try { return JSON.parse(cleaned); } catch (_) {}
+  try {
+    const parsed = Function(`"use strict"; return (${cleaned});`)();
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch (_) {}
+  return null;
+}
+
+function extractFallbackPayload(rawText) {
+  if (!rawText) return null;
+  const text = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+
+  const urgencyMatch = text.match(/"urgency_note"\s*:\s*"([\s\S]*?)"\s*,\s*"summary"/i);
+  const summaryMatch = text.match(/"summary"\s*:\s*"([\s\S]*?)"\s*,\s*"doctors"/i);
+  const urgency_note = urgencyMatch ? urgencyMatch[1].replace(/\\"/g, "\"").trim() : "";
+  const summary = summaryMatch ? summaryMatch[1].replace(/\\"/g, "\"").trim() : "";
+
+  const doctors = [];
+  const doctorsStart = text.search(/"doctors"\s*:\s*\[/i);
+  if (doctorsStart !== -1) {
+    const startBracket = text.indexOf("[", doctorsStart);
+    if (startBracket !== -1) {
+      let depth = 0;
+      let objStart = -1;
+      for (let i = startBracket; i < text.length; i += 1) {
+        const ch = text[i];
+        if (ch === "{") {
+          if (depth === 0) objStart = i;
+          depth += 1;
+        } else if (ch === "}") {
+          depth -= 1;
+          if (depth === 0 && objStart !== -1) {
+            const frag = text.slice(objStart, i + 1);
+            const doc = tryParseObjectFragment(frag);
+            if (doc && (doc.name || doc.address || doc.hospital)) doctors.push(doc);
+            objStart = -1;
+          }
+        } else if (ch === "]" && depth <= 0) {
+          break;
+        }
+      }
+    }
+  }
+
+  if (!urgency_note && !summary && doctors.length === 0) return null;
+  return { urgency_note, summary, doctors };
 }
 
 // ── Build health summary ────────────────────────────────────────────────────
@@ -276,10 +387,10 @@ export default function NearestDoctorFinder({ lastResult, geminiApiKey }) {
 Patient health data: ${healthSummary}
 ${locationCtx}
 
-Return a JSON object with exactly these fields:
+Return ONLY one valid JSON object (no markdown, no explanation, no code fences) with exactly these fields:
 {
   "urgency_note": "one sentence about how urgently this patient needs a neurologist",
-  "summary": "2-3 sentences on what the patient should discuss with the neurologist based on their health data",
+  "summary": "1-2 short sentences on what the patient should discuss with the neurologist",
   "doctors": [
     {
       "name": "Doctor or clinic name",
@@ -291,16 +402,17 @@ Return a JSON object with exactly these fields:
       "mapsUrl": "https://www.google.com/maps/search/?api=1&query=ENCODED_ADDRESS",
       "urgency": "Routine or Moderate or High Priority",
       "why": "why this specialist suits this patient specifically",
-      "tips": "what to prepare for the appointment"
+      "tips": "short preparation tip"
     }
   ]
 }
 
-Find 3 to 4 real neurology specialists near the patient. Use real clinic names and addresses.`;
+Find exactly 3 real neurology specialists near the patient. Use real clinic names and addresses.
+Use plain ASCII characters only.`;
 
     try {
       const raw    = await callGemini(prompt, geminiApiKey);
-      const parsed = extractJSON(raw);
+      const parsed = extractJSON(raw) || extractFallbackPayload(raw);
 
       console.log("Gemini raw response:", raw); // debug
       if (parsed?.doctors?.length > 0) {
@@ -308,9 +420,11 @@ Find 3 to 4 real neurology specialists near the patient. Use real clinic names a
         setSummary(parsed.summary || "");
         setUrgencyNote(parsed.urgency_note || "");
         setPhase("done");
-      } else if (parsed) {
-        // Parsed but no doctors array — show what we got
-        throw new Error(`Gemini responded but doctors list is empty. Keys received: ${Object.keys(parsed).join(", ")}`);
+      } else if (parsed?.summary || parsed?.urgency_note) {
+        setDoctors([]);
+        setSummary(parsed.summary || "");
+        setUrgencyNote(parsed.urgency_note || "");
+        setPhase("done");
       } else {
         // Could not parse at all
         throw new Error(`Could not parse AI response. First 200 chars: ${raw.slice(0, 200)}`);

@@ -23,6 +23,9 @@ import PatientDetail   from "./pages/PatientDetail";
 import ContentManager  from "./pages/ContentManager";
 import DoctorSelection from "./pages/DoctorSelection";
 import CommunityPage from "./pages/CommunityPage";
+import BookAppointment from "./pages/BookAppointment";
+import PatientAppointments from "./pages/PatientAppointments";
+import DoctorAppointments from "./pages/DoctorAppointments";
 
 import SpeechTest   from "./components/SpeechTest";
 import MemoryTest   from "./components/MemoryTest";
@@ -132,6 +135,7 @@ export default function App() {
         case "patient-detail":   return <PatientDetail   setPage={setPage} patient={patient} />;
         case "messages":         return <MessagesPage />;
         case "content":          return <ContentManager />;
+        case "doctor-appointments": return <DoctorAppointments />;
         default:                 return <DoctorHome      setPage={setPage} setSelectedPatient={setPatient} />;
       }
     }
@@ -150,6 +154,8 @@ export default function App() {
       case "messages":    return <MessagesPage />;
       case "community":   return <CommunityPage setPage={setPage} />;
       case "doctors":     return <DoctorSelection setPage={setPage} />;
+      case "book-appointment": return <BookAppointment setPage={setPage} />;
+      case "my-appointments": return <PatientAppointments setPage={setPage} />;
       default:
         if (GAME_IDS.includes(p)) return <GamePlay setPage={setPage} gameId={p} />;
         return <UserDashboard setPage={setPage} />;
