@@ -6,7 +6,7 @@ const LIME = "#C8F135";
 
 async function api(method, path, body) {
   const token = getToken();
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/api${path}`, {
     method,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: body ? JSON.stringify(body) : undefined,

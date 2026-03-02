@@ -53,7 +53,7 @@ function greeting() {
 
 async function apiFetch(path, method = "GET", body = null) {
   const token = sessionStorage.getItem("neuroaid_token");
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/api${path}`, {
     method,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: body ? JSON.stringify(body) : undefined,
