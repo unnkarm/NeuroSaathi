@@ -1,5 +1,5 @@
 // ── API service layer ─────────────────────────────────────────────────────────
-const BASE = "/api";
+const BASE = `${import.meta.env.VITE_API_URL || ""}/api`;
 
 // ── Token / session helpers ───────────────────────────────────────────────────
 export const getToken   = () => sessionStorage.getItem("neuroaid_token");
