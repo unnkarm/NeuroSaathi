@@ -12,6 +12,12 @@ The platform combines **neuropsychological tests**, a **normalized scoring engin
 
 ---
 
+🌐 Frontend: https://mind-saathi.vercel.app
+
+⚙️ Backend : https://mindsaathi-backend.onrender.com
+
+---
+
 # 🚀 Core Objectives
 
 - Detect early cognitive risk using structured digital neuro-tests  
